@@ -59,7 +59,7 @@ FLOORS = {
 
 # GitHub configuration
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", None)
-REPO_NAME = "your-username/your-repo"  # Replace with your GitHub repo (e.g., "john-doe/rfid-heatmap")
+REPO_NAME = "sambitpk/rfid_heatmap_demo3-main"  # Replace with your GitHub repo (e.g., "john-doe/rfid-heatmap")
 
 if not GITHUB_TOKEN:
     st.error("❌ GitHub token not configured. Please set GITHUB_TOKEN in Streamlit secrets.")
