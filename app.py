@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
+from scipy.ndimage import gaussian_filter   # NEW for smoothing
 
 # --- Config ---
 LAYOUT_FOLDER = "floor_layouts"
@@ -82,8 +83,8 @@ if mode == "View Heatmap":
     width, height = img.size
     X, Y = np.meshgrid(np.arange(width), np.arange(height))
 
-    # dBm scale limits
-    RSSI_MIN, RSSI_MAX = -80, -30
+    # dBm scale limits (customized)
+    RSSI_MIN, RSSI_MAX = -75, -20
     Z = np.full_like(X, RSSI_MIN, dtype=float)  # initialize with weakest signal
 
     for r in readers:
@@ -93,15 +94,18 @@ if mode == "View Heatmap":
         distance = np.sqrt((X - x0) ** 2 + (Y - y0) ** 2) / ppm
 
         # Path-loss model: baseline -70 dBm at 1 meter
-        rssi = -62 - 20 * np.log10(np.maximum(distance, 1))
+        rssi = -70 - 20 * np.log10(np.maximum(distance, 1))
 
         # Take strongest RSSI from any reader
         Z = np.maximum(Z, rssi)
 
+    # 🔥 Apply Gaussian smoothing
+    Z_smooth = gaussian_filter(Z, sigma=15)
+
     # Plot floor + heatmap
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.imshow(img, extent=[0, width, height, 0])
-    heat = ax.imshow(Z, cmap='jet', alpha=0.5,
+    heat = ax.imshow(Z_smooth, cmap='jet', alpha=0.5,
                      extent=[0, width, height, 0],
                      vmin=RSSI_MIN, vmax=RSSI_MAX)
 
