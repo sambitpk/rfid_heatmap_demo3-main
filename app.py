@@ -83,7 +83,7 @@ if mode == "View Heatmap":
     X, Y = np.meshgrid(np.arange(width), np.arange(height))
 
     # dBm scale limits
-    RSSI_MIN, RSSI_MAX = -90, -30
+    RSSI_MIN, RSSI_MAX = -80, -30
     Z = np.full_like(X, RSSI_MIN, dtype=float)  # initialize with weakest signal
 
     for r in readers:
@@ -93,7 +93,7 @@ if mode == "View Heatmap":
         distance = np.sqrt((X - x0) ** 2 + (Y - y0) ** 2) / ppm
 
         # Path-loss model: baseline -70 dBm at 1 meter
-        rssi = -70 - 20 * np.log10(np.maximum(distance, 1))
+        rssi = -62 - 20 * np.log10(np.maximum(distance, 1))
 
         # Take strongest RSSI from any reader
         Z = np.maximum(Z, rssi)
