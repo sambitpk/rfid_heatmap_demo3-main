@@ -2,11 +2,9 @@ import streamlit as st
 import json
 import os
 import numpy as np
-import scipy
 import matplotlib.pyplot as plt
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
-from scipy.ndimage import gaussian_filter   # NEW for smoothing
 
 # --- Config ---
 LAYOUT_FOLDER = "floor_layouts"
@@ -84,38 +82,39 @@ if mode == "View Heatmap":
     width, height = img.size
     X, Y = np.meshgrid(np.arange(width), np.arange(height))
 
-    # dBm scale limits (customized)
+    # dBm scale
     RSSI_MIN, RSSI_MAX = -75, -20
-    Z = np.full_like(X, RSSI_MIN, dtype=float)  # initialize with weakest signal
 
+    # Build Gaussian heatmap
+    Z = np.zeros_like(X, dtype=float)
     for r in readers:
         x0, y0 = r["x"], r["y"]
+        sigma = (ppm * 8)  # ~8m spread
+        Z += np.exp(-((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma ** 2))
 
-        # Distance from reader (convert px → meters using ppm)
-        distance = np.sqrt((X - x0) ** 2 + (Y - y0) ** 2) / ppm
+    # Normalize to 0–1
+    Z = (Z - Z.min()) / (Z.max() - Z.min())
 
-        # Path-loss model: baseline -70 dBm at 1 meter
-        rssi = -62 - 20 * np.log10(np.maximum(distance, 1))
-
-        # Take strongest RSSI from any reader
-        Z = np.maximum(Z, rssi)
-
-    # 🔥 Apply Gaussian smoothing
-    Z_smooth = gaussian_filter(Z, sigma=15)
+    # Map to dBm
+    Z_dbm = RSSI_MIN + Z * (RSSI_MAX - RSSI_MIN)
 
     # Plot floor + heatmap
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.imshow(img, extent=[0, width, height, 0])
-    heat = ax.imshow(Z_smooth, cmap='jet', alpha=0.5,
+    heat = ax.imshow(Z_dbm, cmap='jet', alpha=0.5,
                      extent=[0, width, height, 0],
                      vmin=RSSI_MIN, vmax=RSSI_MAX)
-
     fig.colorbar(heat, ax=ax, label="Signal Strength (dBm)")
 
-    # Plot reader positions
+    # Plot readers
     for i, r in enumerate(readers):
         ax.plot(r["x"], r["y"], 'wo')
         ax.text(r["x"]+5, r["y"]+5, f'R{i+1}', color='white', fontsize=8)
+
+    # Hide axes
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.axis('off')
 
     st.pyplot(fig)
 
@@ -146,7 +145,7 @@ elif mode == "Edit Reader Positions":
         key="canvas",
     )
 
-    # Extract new reader positions from drawn objects
+    # Extract new reader positions
     new_readers = []
     if canvas_result.json_data is not None:
         scale_back = img.width / canvas_width
