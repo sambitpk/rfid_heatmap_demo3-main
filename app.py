@@ -76,27 +76,42 @@ except Exception as e:
     st.error(f"Error loading layout or data: {e}")
     st.stop()
 
-r_px = int(80 * ppm)
-
 # === VIEW MODE ===
 if mode == "View Heatmap":
-    st.subheader(f"📡 RFID Coverage – {floor_name}")
+    st.subheader(f"📡 RFID Coverage (dBm) – {floor_name}")
     width, height = img.size
     X, Y = np.meshgrid(np.arange(width), np.arange(height))
-    Z = np.zeros_like(X, dtype=float)
+
+    # dBm scale limits
+    RSSI_MIN, RSSI_MAX = -90, -30
+    Z = np.full_like(X, RSSI_MIN, dtype=float)  # initialize with weakest signal
 
     for r in readers:
         x0, y0 = r["x"], r["y"]
-        sigma = r_px / 2.5
-        Z += np.exp(-((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma ** 2))
 
+        # Distance from reader (convert px → meters using ppm)
+        distance = np.sqrt((X - x0) ** 2 + (Y - y0) ** 2) / ppm
+
+        # Path-loss model: baseline -70 dBm at 1 meter
+        rssi = -70 - 20 * np.log10(np.maximum(distance, 1))
+
+        # Take strongest RSSI from any reader
+        Z = np.maximum(Z, rssi)
+
+    # Plot floor + heatmap
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.imshow(img, extent=[0, width, height, 0])
-    heat = ax.imshow(Z, cmap='jet', alpha=0.5, extent=[0, width, height, 0])
-    fig.colorbar(heat, ax=ax, label="Signal Strength")
+    heat = ax.imshow(Z, cmap='jet', alpha=0.5,
+                     extent=[0, width, height, 0],
+                     vmin=RSSI_MIN, vmax=RSSI_MAX)
+
+    fig.colorbar(heat, ax=ax, label="Signal Strength (dBm)")
+
+    # Plot reader positions
     for i, r in enumerate(readers):
         ax.plot(r["x"], r["y"], 'wo')
         ax.text(r["x"]+5, r["y"]+5, f'R{i+1}', color='white', fontsize=8)
+
     st.pyplot(fig)
 
 # === EDIT MODE ===
@@ -112,7 +127,6 @@ elif mode == "Edit Reader Positions":
 
     resized_img = img.resize((canvas_width, canvas_height))
     resized_img = resized_img.convert("RGB")  # Ensure RGB format
-
 
     # Draw canvas
     canvas_result = st_canvas(
