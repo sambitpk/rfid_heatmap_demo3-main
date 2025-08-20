@@ -84,7 +84,7 @@ try:
         config = json.loads(contents.decoded_content.decode())
     except:
         # Create empty JSON if not exists
-        config = {"pixels_per_meter": 124, "readers": []}  # Default ppm for 500 m²
+        config = {"pixels_per_meter": 52, "readers": []}  # Default ppm for 500 m²
         repo.create_file(
             data_path,
             message="Initialize reader positions",
@@ -109,7 +109,7 @@ if mode == "View Heatmap":
     Z = np.zeros_like(X, dtype=float)
     for r in readers:
         x0, y0 = r["x"], r["y"]
-        sigma = min(ppm * 50, min(width, height) / 4)  # ~75m spread, capped
+        sigma = min(ppm * 50, min(width, height) / 4)  # ~50m spread, capped
         Z += np.exp(-((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma ** 2))
 
     # Normalize to 0–1
