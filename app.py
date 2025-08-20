@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
+from github import Github
 
 # --- Config ---
 LAYOUT_FOLDER = "floor_layouts"
@@ -56,6 +57,14 @@ FLOORS = {
     "9th Floor CN-4": "9F-4",
 }
 
+# GitHub configuration
+GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", None)
+REPO_NAME = "your-username/your-repo"  # Replace with your GitHub repo (e.g., "john-doe/rfid-heatmap")
+
+if not GITHUB_TOKEN:
+    st.error("❌ GitHub token not configured. Please set GITHUB_TOKEN in Streamlit secrets.")
+    st.stop()
+
 st.set_page_config(layout="wide")
 mode = st.sidebar.radio("Choose Mode", ["View Heatmap", "Edit Reader Positions"])
 
@@ -68,8 +77,19 @@ data_path = f"{DATA_FOLDER}/{floor_key}.json"
 # Load layout and data
 try:
     img = Image.open(layout_path)
-    with open(data_path, 'r') as f:
-        config = json.load(f)
+    g = Github(GITHUB_TOKEN)
+    repo = g.get_repo(REPO_NAME)
+    try:
+        contents = repo.get_contents(data_path)
+        config = json.loads(contents.decoded_content.decode())
+    except:
+        # Create empty JSON if not exists
+        config = {"pixels_per_meter": 124, "readers": []}  # Default ppm for 500 m²
+        repo.create_file(
+            data_path,
+            message="Initialize reader positions",
+            content=json.dumps(config, indent=2)
+        )
     ppm = config["pixels_per_meter"]
     readers = config["readers"]
 except Exception as e:
@@ -85,11 +105,11 @@ if mode == "View Heatmap":
     # dBm scale
     RSSI_MIN, RSSI_MAX = -75, -20
 
-    # Build Gaussian heatmap
+    # Build Gaussian heatmap with 75m radius
     Z = np.zeros_like(X, dtype=float)
     for r in readers:
         x0, y0 = r["x"], r["y"]
-        sigma = (ppm * 1)  # ~8m spread
+        sigma = min(ppm * 75, min(width, height) / 4)  # ~75m spread, capped
         Z += np.exp(-((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma ** 2))
 
     # Normalize to 0–1
@@ -115,7 +135,6 @@ if mode == "View Heatmap":
     ax.set_xticks([])
     ax.set_yticks([])
     ax.axis('off')
-
     st.pyplot(fig)
 
 # === EDIT MODE ===
@@ -157,11 +176,26 @@ elif mode == "Edit Reader Positions":
 
     st.markdown("### 📍 Current Readers")
     st.json(new_readers)
+    st.write(f"Debug: Number of readers to save: {len(new_readers)}")
 
     if st.button("💾 Save Reader Positions"):
         try:
-            with open(data_path, "w") as f:
-                json.dump({"pixels_per_meter": ppm, "readers": new_readers}, f, indent=2)
-            st.success("✅ Reader positions saved successfully.")
+            data_to_save = {"pixels_per_meter": ppm, "readers": new_readers}
+            try:
+                contents = repo.get_contents(data_path)
+                repo.update_file(
+                    data_path,
+                    message="Update reader positions",
+                    content=json.dumps(data_to_save, indent=2),
+                    sha=contents.sha
+                )
+            except:
+                repo.create_file(
+                    data_path,
+                    message="Create reader positions",
+                    content=json.dumps(data_to_save, indent=2)
+                )
+            st.success(f"✅ Reader positions saved to GitHub. Saved {len(new_readers)} readers.")
+            st.cache_data.clear()  # Clear cache
         except Exception as e:
             st.error(f"❌ Error saving reader data: {e}")
