@@ -95,7 +95,7 @@ if mode == "View Heatmap":
         distance = np.sqrt((X - x0) ** 2 + (Y - y0) ** 2) / ppm
 
         # Path-loss model: baseline -70 dBm at 1 meter
-        rssi = -70 - 20 * np.log10(np.maximum(distance, 1))
+        rssi = -62 - 20 * np.log10(np.maximum(distance, 1))
 
         # Take strongest RSSI from any reader
         Z = np.maximum(Z, rssi)
