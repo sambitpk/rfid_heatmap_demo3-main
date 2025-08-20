@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import os
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
