@@ -109,7 +109,7 @@ if mode == "View Heatmap":
     Z = np.zeros_like(X, dtype=float)
     for r in readers:
         x0, y0 = r["x"], r["y"]
-        sigma = min(ppm * 75, min(width, height) / 4)  # ~75m spread, capped
+        sigma = min(ppm * 50, min(width, height) / 4)  # ~75m spread, capped
         Z += np.exp(-((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma ** 2))
 
     # Normalize to 0–1
