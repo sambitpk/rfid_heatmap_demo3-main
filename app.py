@@ -105,7 +105,7 @@ if mode == "View Heatmap":
     # dBm scale
     RSSI_MIN, RSSI_MAX = -75, -20
 
-    # Build Gaussian heatmap with 75m radius
+    # Build Gaussian heatmap with 50m radius
     Z = np.zeros_like(X, dtype=float)
     for r in readers:
         x0, y0 = r["x"], r["y"]
