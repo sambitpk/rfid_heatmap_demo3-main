@@ -55,6 +55,7 @@ FLOORS = {
     "7th Floor CN-4": "7F-4",
     "8th Floor CN-4": "8F-4",
     "9th Floor CN-4": "9F-4",
+    "Poc Area": "POC"
 }
 
 # GitHub configuration
